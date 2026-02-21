@@ -183,4 +183,5 @@ elif menu == "Dashboard Admin 🔒":
 
 # Footer Global
 st.sidebar.markdown("---")
-st.sidebar.caption("Dikembangkan oleh LexFilsafat AI")
+st.sidebar.caption("Dikembangkan oleh Gean Pratama Adiaksa SH with LexFilsafat AI")
+
