@@ -62,7 +62,7 @@ model = genai.GenerativeModel('gemini-2.5-flash')
 # ==========================================
 if menu == "Analisis Umum":
     st.title("⚖️ Analisis Perkara Umum")
-    user_input = st.text_area("Deskripsikan kronologi perkara:", height=150)
+    user_input = st.text_area("Deskripsikan kronologi perkara saudara:", height=250)
     
     st.info("💡 **Fitur Premium:** Masukkan nama dan email/WhatsApp Anda untuk mengunduh Draft Dokumen Hukum yang mendetail.")
     col1, col2 = st.columns(2)
@@ -87,6 +87,7 @@ if menu == "Analisis Umum":
                         prompt_draft = f"Buatkan draft surat hukum formal (misal somasi/gugatan) untuk kasus: {user_input}"
                         draft = model.generate_content(prompt_draft).text
                         docx_file = create_word_docx(draft, "Draft_Hukum")
+                        st.ballon
                         st.download_button("📥 Unduh Draft Spesifik (.docx)", data=docx_file, file_name="Draft_Premium.docx")
                     else:
                         st.warning("⚠️ Masukkan Nama dan Email di atas untuk membuka tombol Unduh Draft Surat Hukum.")
@@ -184,4 +185,5 @@ elif menu == "Dashboard Admin 🔒":
 # Footer Global
 st.sidebar.markdown("---")
 st.sidebar.caption("Dikembangkan oleh Gean Pratama Adiaksa SH with LexFilsafat AI")
+
 
