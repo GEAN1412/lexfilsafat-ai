@@ -87,7 +87,6 @@ if menu == "Analisis Umum":
                         prompt_draft = f"Buatkan draft surat hukum formal (misal somasi/gugatan) untuk kasus: {user_input}"
                         draft = model.generate_content(prompt_draft).text
                         docx_file = create_word_docx(draft, "Draft_Hukum")
-                        st.ballon
                         st.download_button("📥 Unduh Draft Spesifik (.docx)", data=docx_file, file_name="Draft_Premium.docx")
                     else:
                         st.warning("⚠️ Masukkan Nama dan Email di atas untuk membuka tombol Unduh Draft Surat Hukum.")
@@ -185,5 +184,6 @@ elif menu == "Dashboard Admin 🔒":
 # Footer Global
 st.sidebar.markdown("---")
 st.sidebar.caption("Dikembangkan oleh Gean Pratama Adiaksa SH with LexFilsafat AI")
+
 
 
