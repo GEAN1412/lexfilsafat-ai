@@ -12,19 +12,16 @@ from datetime import datetime
 st.set_page_config(page_title="LexFilsafat AI - Super App", page_icon="⚖️", layout="wide")
 
 # ==========================================
-# 2. SETUP API KEY (DENGAN PENANGANAN ERROR)
+# 2. SETUP API KEY (AMAN DARI LEAK)
 # ==========================================
-# Mengambil API Key dari Secrets Streamlit Cloud
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
-    # Jika gagal membaca rahasia, gunakan variabel lokal (Ganti saat tes di laptop)
-    API_KEY = "MASUKKAN_API_KEY_ANDA_DISINI" 
+    API_KEY = "" # Kosongkan agar aman jika bocor
 
-# Pengecekan agar web tidak crash jika API Key belum diisi
-if API_KEY == "MASUKKAN_API_KEY_ANDA_DISINI" or API_KEY == "":
-    st.error("🚨 **Sistem Terkunci:** API Key Gemini belum dikonfigurasi dengan benar. Silakan cek menu 'Secrets' di pengaturan Streamlit Cloud Anda.")
-    st.stop() # Menghentikan kode ke bawah agar tidak muncul error merah panjang
+if API_KEY == "":
+    st.error("🚨 Sistem Terkunci: API Key Gemini belum dikonfigurasi di Secrets.")
+    st.stop()
 
 genai.configure(api_key=API_KEY)
 
@@ -54,7 +51,7 @@ def simpan_ke_database(nama, email, kasus):
 # ==========================================
 st.sidebar.title("⚖️ LexFilsafat Menu")
 menu = st.sidebar.radio("Pilih Layanan:", 
-    ["Analisis Umum", "Klinik Bisnis & Pajak", "Kalkulator Hukum", "Mode Kreator (Admin)", "Database Leads"]
+    ["Analisis Umum", "Klinik Bisnis & Pajak", "Kalkulator Hukum", "Dashboard Admin 🔒"]
 )
 
 # Inisialisasi Model AI
@@ -75,7 +72,6 @@ if menu == "Analisis Umum":
         user_email = st.text_input("Email / WhatsApp (Opsional):")
 
     if st.button("Analisis Kasus"):
-        # VALIDASI: Cek apakah user sudah mengisi kasusnya
         if not user_input.strip():
             st.warning("⚠️ Hei! Anda belum mengisi deskripsi perkara. Silakan ketik kronologinya terlebih dahulu.")
         else:
@@ -130,31 +126,61 @@ elif menu == "Kalkulator Hukum":
         st.success(f"**Estimasi Hak Pesangon & Penghargaan Masa Kerja:** Rp {total:,.2f}")
 
 # ==========================================
-# MENU 4: MODE KREATOR (ADMIN ONLY)
+# MENU 4: DASHBOARD ADMIN (PASSWORD PROTECTED)
 # ==========================================
-elif menu == "Mode Kreator (Admin)":
-    st.title("🎥 Generator Script Konten Hukum & Ekonomi")
-    ide_konten = st.text_input("Topik hari ini:", placeholder="Contoh: Logika hukum pinjol ilegal.")
-    platform = st.selectbox("Pilih Platform:", ["YouTube Shorts (60 detik)", "Instagram Carousel (5 Slide)", "Video YouTube Panjang"])
+elif menu == "Dashboard Admin 🔒":
+    st.title("🔒 Area Khusus Admin")
+    st.write("Silakan masukkan password untuk mengakses Dapur Kreator dan Database.")
     
-    if st.button("Buat Naskah Konten"):
-        if not ide_konten.strip():
-            st.warning("⚠️ Silakan masukkan topik kontennya terlebih dahulu!")
-        else:
-            with st.spinner("Sedang meracik hook dan storytelling..."):
-                try:
-                    prompt_kreator = f"Kamu adalah Scriptwriter. Buatkan naskah untuk {platform} dengan topik: {ide_konten}. Target audiens: Gen-Z/Milenial. Berikan format visual/teks layar dan audio yang detail."
-                    st.markdown(model.generate_content(prompt_kreator).text)
-                except Exception as e:
-                    st.error(f"Terjadi masalah pada server AI: {e}")
+    # Input Password (huruf akan disamarkan menjadi bintang/titik)
+    password = st.text_input("Password:", type="password")
+    
+    if password == "lexai1234":
+        st.success("Akses Diterima. Selamat datang, Admin!")
+        st.markdown("---")
+        
+        # Membuat TAB untuk memisahkan menu
+        tab1, tab2 = st.tabs(["🎥 Generator Script Konten", "📊 Database Leads"])
+        
+        # ISI TAB 1 (Generator Naskah)
+        with tab1:
+            st.subheader("Buat Naskah Konten Cepat")
+            ide_konten = st.text_input("Topik hari ini:", placeholder="Contoh: Logika hukum pinjol ilegal.")
+            platform = st.selectbox("Pilih Platform:", ["YouTube Shorts (60 detik)", "Instagram Carousel (5 Slide)", "Video YouTube Panjang"])
+            
+            if st.button("Buat Naskah Konten"):
+                if not ide_konten.strip():
+                    st.warning("⚠️ Silakan masukkan topik kontennya terlebih dahulu!")
+                else:
+                    with st.spinner("Sedang meracik hook dan storytelling..."):
+                        try:
+                            prompt_kreator = f"Kamu adalah Scriptwriter. Buatkan naskah untuk {platform} dengan topik: {ide_konten}. Target audiens: Gen-Z/Milenial. Berikan format visual/teks layar dan audio yang detail."
+                            st.markdown(model.generate_content(prompt_kreator).text)
+                        except Exception as e:
+                            st.error(f"Terjadi masalah pada server AI: {e}")
+        
+        # ISI TAB 2 (Database Leads)
+        with tab2:
+            st.subheader("Data Pengguna Premium")
+            if os.path.exists('database_perkara.csv'):
+                df = pd.read_csv('database_perkara.csv')
+                # Menampilkan tabel data
+                st.dataframe(df, use_container_width=True)
+                
+                # Tambahan: Tombol untuk download database ke Excel/CSV
+                csv_data = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Unduh Database (CSV)",
+                    data=csv_data,
+                    file_name='Backup_Database_Leads.csv',
+                    mime='text/csv',
+                )
+            else:
+                st.info("Belum ada data masuk dari pengguna.")
+                
+    elif password != "":
+        st.error("❌ Password salah! Anda tidak memiliki izin untuk mengakses halaman ini.")
 
-# ==========================================
-# MENU 5: DATABASE LEADS
-# ==========================================
-elif menu == "Database Leads":
-    st.title("📊 Database Klien / Leads")
-    if os.path.exists('database_perkara.csv'):
-        df = pd.read_csv('database_perkara.csv')
-        st.dataframe(df, use_container_width=True)
-    else:
-        st.info("Belum ada data masuk.")
+# Footer Global
+st.sidebar.markdown("---")
+st.sidebar.caption("Dikembangkan oleh LexFilsafat AI")
