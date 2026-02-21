@@ -132,30 +132,77 @@ elif menu == "Dashboard Admin 🔒":
     st.title("🔒 Area Khusus Admin")
     st.write("Silakan masukkan password untuk mengakses Dapur Kreator dan Database.")
     
-    # Input Password (huruf akan disamarkan menjadi bintang/titik)
     password = st.text_input("Password:", type="password")
     
     if password == "lexai1234":
         st.success("Akses Diterima. Selamat datang, Admin!")
         st.markdown("---")
         
-        # Membuat TAB untuk memisahkan menu
-        tab1, tab2 = st.tabs(["🎥 Generator Script Konten", "📊 Database Leads"])
+        tab1, tab2 = st.tabs(["🎥 Generator Script Konten Pro", "📊 Database Leads"])
         
-        # ISI TAB 1 (Generator Naskah)
+        # ISI TAB 1 (Generator Naskah Tier 1)
         with tab1:
-            st.subheader("Buat Naskah Konten Cepat")
+            st.subheader("Pabrik Konten Hukum & Ekonomi (Veo & IG Ready)")
             ide_konten = st.text_input("Topik hari ini:", placeholder="Contoh: Logika hukum pinjol ilegal.")
-            platform = st.selectbox("Pilih Platform:", ["YouTube Shorts (60 detik)", "Instagram Carousel (5 Slide)", "Video YouTube Panjang"])
+            platform = st.selectbox("Pilih Platform:", [
+                "YouTube Shorts / TikTok (Video Pendek Veo)", 
+                "Video YouTube Panjang (Video Cinematic Veo)",
+                "Instagram Feed / Carousel (Siap Post)"
+            ])
             
-            if st.button("Buat Naskah Konten"):
+            if st.button("Generate Masterpiece 🚀"):
                 if not ide_konten.strip():
                     st.warning("⚠️ Silakan masukkan topik kontennya terlebih dahulu!")
                 else:
-                    with st.spinner("Sedang meracik hook dan storytelling..."):
+                    with st.spinner("Mengoptimasi SEO, meracik visual Veo, dan menyusun copywriting..."):
                         try:
-                            prompt_kreator = f"Kamu adalah Scriptwriter. Buatkan naskah untuk {platform} dengan topik: {ide_konten}. Target audiens: Gen-Z/Milenial. Berikan format visual/teks layar dan audio yang detail."
-                            st.markdown(model.generate_content(prompt_kreator).text)
+                            # Logika Prompt Berbeda Tergantung Platform
+                            if "Video" in platform or "Shorts" in platform:
+                                prompt_kreator = f"""
+                                Kamu adalah Produser Konten Edukasi Hukum & Ekonomi, Ahli SEO YouTube, dan Ahli Prompting AI Video (Veo 3).
+                                Buatkan master naskah untuk {platform} dengan topik: "{ide_konten}". Target: Gen-Z/Milenial.
+                                
+                                WAJIB gunakan format Markdown persis seperti ini:
+                                
+                                **Judul Video:** [Tulis judul yang clickbait tapi akurat]
+                                
+                                **Deskripsi:** [Tulis deskripsi SEO dengan keyword relevan]
+                                
+                                * **Hashtags:** `#contoh1` `#contoh2` `#contoh3`
+                                * **Tags:** `keyword 1, keyword 2, keyword 3`
+                                
+                                | No | Naskah Voiceover (Durasi est.) | Visual yang Dibayangkan | Prompt untuk Veo 3 |
+                                | :--- | :--- | :--- | :--- |
+                                | 1 | "Naskah bahasa Indonesia di sini." (0-5 detik) | Deskripsi visual dalam bahasa Indonesia. | `Cinematic prompt for Veo 3 in English, highly detailed, 4k` |
+                                | 2 | "Naskah baris kedua." (5-10 detik) | Deskripsi visual selanjutnya. | `Next english prompt for Veo 3, photorealistic` |
+                                
+                                Lanjutkan baris tabel hingga naskah selesai sesuai durasi platform. Pastikan isi kolom 'Prompt untuk Veo 3', Hashtags, dan Tags dibungkus dengan tanda backtick (`) agar formatnya menjadi kode.
+                                """
+                            else:
+                                prompt_kreator = f"""
+                                Kamu adalah Social Media Manager Edukasi Hukum & Ekonomi dan Copywriter handal.
+                                Buatkan konten {platform} dengan topik: "{ide_konten}". Target: Gen-Z/Milenial.
+                                
+                                WAJIB gunakan format struktur persis seperti ini agar desain konsisten:
+                                
+                                📱 [KONTEN SLIDE-BY-SLIDE]
+                                Slide 1 (Hook Utama):
+                                - Headline Teks: [Judul besar yang bikin orang berhenti scrolling]
+                                - Deskripsi Visual: [Ide gambar/ilustrasi untuk background]
+                                
+                                Slide 2 (Masalah):
+                                - Teks: ...
+                                - Deskripsi Visual: ...
+                                (Lanjutkan hingga Slide 5/Terakhir - Kesimpulan & CTA)
+                                
+                                ✍️ [POSTINGAN INSTAGRAM]
+                                - Caption: [Tulis caption yang engaging, berikan spasi/enter yang rapi, ajak interaksi]
+                                - Hashtags: [Tulis hashtag strategis]
+                                """
+                                
+                            hasil_konten = model.generate_content(prompt_kreator).text
+                            st.markdown(hasil_konten)
+                            
                         except Exception as e:
                             st.error(f"Terjadi masalah pada server AI: {e}")
         
@@ -164,10 +211,8 @@ elif menu == "Dashboard Admin 🔒":
             st.subheader("Data Pengguna Premium")
             if os.path.exists('database_perkara.csv'):
                 df = pd.read_csv('database_perkara.csv')
-                # Menampilkan tabel data
                 st.dataframe(df, use_container_width=True)
                 
-                # Tambahan: Tombol untuk download database ke Excel/CSV
                 csv_data = df.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="📥 Unduh Database (CSV)",
@@ -180,10 +225,6 @@ elif menu == "Dashboard Admin 🔒":
                 
     elif password != "":
         st.error("❌ Password salah! Anda tidak memiliki izin untuk mengakses halaman ini.")
-
-# Footer Global
-st.sidebar.markdown("---")
-st.sidebar.caption("Dikembangkan oleh Gean Pratama Adiaksa SH with LexFilsafat AI")
 
 
 
