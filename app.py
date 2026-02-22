@@ -5,11 +5,21 @@ from io import BytesIO
 import pandas as pd
 import os
 from datetime import datetime
+import json
+from PIL import Image, ImageDraw, ImageFont
+import textwrap
 
 # ==========================================
 # 1. KONFIGURASI HALAMAN
 # ==========================================
 st.set_page_config(page_title="LexFilsafat AI - Super App", page_icon="⚖️", layout="wide")
+
+# KONFIGURASI DESAIN INSTAGRAM
+FONT_HEADLINE_PATH = "Roboto-Bold.ttf"  # Pastikan file ini ada di GitHub
+FONT_BODY_PATH = "Roboto-Regular.ttf"   # Pastikan file ini ada di GitHub
+BG_COLOR = "#1E1E1E"    # Latar Belakang Gelap (Dark Mode)
+TEXT_COLOR = "#FFFFFF"  # Teks Putih
+ACCENT_COLOR = "#FFD700" # Emas (Khas Hukum/Elegan)
 
 # ==========================================
 # 2. SETUP API KEY (AMAN DARI LEAK)
@@ -17,7 +27,7 @@ st.set_page_config(page_title="LexFilsafat AI - Super App", page_icon="⚖️", 
 try:
     API_KEY = st.secrets["GEMINI_API_KEY"]
 except:
-    API_KEY = "" # Kosongkan agar aman jika bocor
+    API_KEY = ""
 
 if API_KEY == "":
     st.error("🚨 Sistem Terkunci: API Key Gemini belum dikonfigurasi di Secrets.")
@@ -26,7 +36,7 @@ if API_KEY == "":
 genai.configure(api_key=API_KEY)
 
 # ==========================================
-# FUNGSI BANTUAN
+# FUNGSI BANTUAN (Word & Database)
 # ==========================================
 def create_word_docx(teks_analisis, judul_perkara):
     doc = Document()
@@ -47,6 +57,50 @@ def simpan_ke_database(nama, email, kasus):
     data_final.to_csv(file_path, index=False)
 
 # ==========================================
+# FUNGSI BARU: GENERATOR GAMBAR (PILLOW)
+# ==========================================
+def create_instagram_slide(headline, body, slide_num):
+    # 1. Buat Kanvas 1080x1080
+    img = Image.new('RGB', (1080, 1080), color=BG_COLOR)
+    draw = ImageDraw.Draw(img)
+
+    # 2. Load Font (Dengan Fallback ke Default jika file ttf tidak ada)
+    try:
+        font_h = ImageFont.truetype(FONT_HEADLINE_PATH, 80) # Ukuran Headline
+        font_b = ImageFont.truetype(FONT_BODY_PATH, 45)     # Ukuran Body
+        font_s = ImageFont.truetype(FONT_BODY_PATH, 30)     # Ukuran Footer
+    except:
+        # Jika user lupa upload font, pakai default (jelek tapi jalan)
+        font_h = ImageFont.load_default()
+        font_b = ImageFont.load_default()
+        font_s = ImageFont.load_default()
+
+    # 3. Setup Margin & Text Wrapping
+    margin = 80
+    max_width_h = 20 # Karakter per baris untuk Headline
+    max_width_b = 35 # Karakter per baris untuk Body
+
+    # 4. Gambar Headline (Warna Emas)
+    wrapped_h = textwrap.fill(headline, width=max_width_h)
+    draw.text((margin, 150), wrapped_h, font=font_h, fill=ACCENT_COLOR)
+
+    # Hitung tinggi headline agar body text tidak bertabrakan
+    bbox = draw.textbbox((margin, 150), wrapped_h, font=font_h)
+    h_height = bbox[3] 
+    
+    # 5. Gambar Body Text (Warna Putih) di bawah Headline
+    wrapped_b = textwrap.fill(body, width=max_width_b)
+    draw.text((margin, h_height + 60), wrapped_b, font=font_b, fill=TEXT_COLOR)
+
+    # 6. Gambar Footer & Elemen Grafis
+    # Garis aksen di bawah
+    draw.rectangle([(margin, 980), (1080-margin, 990)], fill=ACCENT_COLOR)
+    # Watermark
+    draw.text((margin, 1000), f"Slide {slide_num} • LexFilsafat AI", font=font_s, fill=TEXT_COLOR)
+
+    return img
+
+# ==========================================
 # 3. SIDEBAR NAVIGASI
 # ==========================================
 st.sidebar.title("⚖️ LexFilsafat Menu")
@@ -54,7 +108,6 @@ menu = st.sidebar.radio("Pilih Layanan:",
     ["Analisis Umum", "Klinik Bisnis & Pajak", "Kalkulator Hukum", "Dashboard Admin 🔒"]
 )
 
-# Inisialisasi Model AI
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # ==========================================
@@ -62,7 +115,7 @@ model = genai.GenerativeModel('gemini-2.5-flash')
 # ==========================================
 if menu == "Analisis Umum":
     st.title("⚖️ Analisis Perkara Umum")
-    user_input = st.text_area("Deskripsikan kronologi perkara saudara:", height=250)
+    user_input = st.text_area("Deskripsikan kronologi perkara:", height=150)
     
     st.info("💡 **Fitur Premium:** Masukkan nama dan email/WhatsApp Anda untuk mengunduh Draft Dokumen Hukum yang mendetail.")
     col1, col2 = st.columns(2)
@@ -73,158 +126,123 @@ if menu == "Analisis Umum":
 
     if st.button("Analisis Kasus"):
         if not user_input.strip():
-            st.warning("⚠️ Hei! Anda belum mengisi deskripsi perkara. Silakan ketik kronologinya terlebih dahulu.")
+            st.warning("⚠️ Isi dulu kronologi perkaranya.")
         else:
             with st.spinner("Menganalisis..."):
                 try:
-                    prompt = f"Sebagai Ahli Hukum & Filsafat. Analisis kasus ini: {user_input}. Berikan Kualifikasi Perkara, Pasal, Filsafat, dan Rujukan."
+                    prompt = f"Sebagai Ahli Hukum. Analisis: {user_input}. Berikan Kualifikasi, Pasal, Filsafat, Rujukan."
                     hasil = model.generate_content(prompt).text
-                    st.success("Analisis berhasil!")
+                    st.success("Selesai!")
                     st.markdown(hasil)
                     
                     if user_nama and user_email:
                         simpan_ke_database(user_nama, user_email, user_input)
-                        prompt_draft = f"Buatkan draft surat hukum formal (misal somasi/gugatan) untuk kasus: {user_input}"
+                        prompt_draft = f"Buatkan draft surat hukum formal untuk: {user_input}"
                         draft = model.generate_content(prompt_draft).text
                         docx_file = create_word_docx(draft, "Draft_Hukum")
-                        st.download_button("📥 Unduh Draft Spesifik (.docx)", data=docx_file, file_name="Draft_Premium.docx")
-                    else:
-                        st.warning("⚠️ Masukkan Nama dan Email di atas untuk membuka tombol Unduh Draft Surat Hukum.")
+                        st.download_button("📥 Unduh Draft (.docx)", data=docx_file, file_name="Draft_Premium.docx")
                 except Exception as e:
-                    st.error(f"Terjadi masalah pada server AI: {e}")
+                    st.error(f"Error AI: {e}")
 
 # ==========================================
-# MENU 2: KLINIK BISNIS & PAJAK
+# MENU 2 & 3 (Placeholder)
 # ==========================================
 elif menu == "Klinik Bisnis & Pajak":
-    st.title("🏢 Klinik Legal Bisnis & Pajak UMKM")
-    kasus_bisnis = st.text_area("Apa kendala bisnis Anda?", height=150)
-    
-    if st.button("Konsultasi Bisnis"):
-        if not kasus_bisnis.strip():
-            st.warning("⚠️ Silakan jelaskan dulu kendala bisnis atau pajak Anda.")
-        else:
-            with st.spinner("Menyusun opini legal bisnis..."):
-                try:
-                    prompt_bisnis = f"Sebagai Corporate Lawyer dan Konsultan Pajak Indonesia. Berikan opini legal, regulasi pajak/Cipta Kerja terbaru, dan mitigasi risiko terkait bisnis ini: {kasus_bisnis}"
-                    st.markdown(model.generate_content(prompt_bisnis).text)
-                except Exception as e:
-                    st.error(f"Terjadi masalah pada server AI: {e}")
+    st.title("🏢 Klinik Legal Bisnis & Pajak")
+    st.info("Fitur sedang dalam maintenance untuk upgrade sistem.")
 
-# ==========================================
-# MENU 3: KALKULATOR HUKUM
-# ==========================================
 elif menu == "Kalkulator Hukum":
-    st.title("🧮 Kalkulator Pesangon PHK")
-    gaji = st.number_input("Masukkan Gaji Pokok (Rp):", min_value=0, step=1000000)
-    masa_kerja = st.number_input("Lama Bekerja (Tahun):", min_value=0, step=1)
-    
-    if st.button("Hitung Estimasi"):
-        uang_pesangon = min(masa_kerja, 9) * gaji
-        uang_penghargaan = max(0, ((masa_kerja - 3) // 3) * gaji)
-        total = uang_pesangon + uang_penghargaan
-        st.success(f"**Estimasi Hak Pesangon & Penghargaan Masa Kerja:** Rp {total:,.2f}")
+    st.title("🧮 Kalkulator Pesangon")
+    st.info("Fitur sedang dalam maintenance untuk upgrade sistem.")
 
 # ==========================================
 # MENU 4: DASHBOARD ADMIN (PASSWORD PROTECTED)
 # ==========================================
 elif menu == "Dashboard Admin 🔒":
     st.title("🔒 Area Khusus Admin")
-    st.write("Silakan masukkan password untuk mengakses Dapur Kreator dan Database.")
-    
     password = st.text_input("Password:", type="password")
     
     if password == "lexai1234":
-        st.success("Akses Diterima. Selamat datang, Admin!")
+        st.success("Akses Admin Diterima.")
         st.markdown("---")
         
-        tab1, tab2 = st.tabs(["🎥 Generator Script Konten Pro", "📊 Database Leads"])
+        tab1, tab2 = st.tabs(["🎥 Generator Konten (Auto-Image)", "📊 Database Leads"])
         
-        # ISI TAB 1 (Generator Naskah Tier 1)
+        # TAB 1: GENERATOR KONTEN
         with tab1:
-            st.subheader("Pabrik Konten Hukum & Ekonomi (Veo & IG Ready)")
-            ide_konten = st.text_input("Topik hari ini:", placeholder="Contoh: Logika hukum pinjol ilegal.")
-            platform = st.selectbox("Pilih Platform:", [
-                "YouTube Shorts / TikTok (Video Pendek Veo)", 
-                "Video YouTube Panjang (Video Cinematic Veo)",
-                "Instagram Feed / Carousel (Siap Post)"
+            st.subheader("Dapur Konten Otomatis")
+            ide_konten = st.text_input("Topik Konten:", placeholder="Contoh: Utang Pinjol vs Utang Teman")
+            platform = st.selectbox("Format:", [
+                "Instagram Feed (Auto-Generate Gambar)",
+                "YouTube Shorts / Veo (Naskah Video)"
             ])
             
-            if st.button("Generate Masterpiece 🚀"):
+            if st.button("Generate Konten 🚀"):
                 if not ide_konten.strip():
-                    st.warning("⚠️ Silakan masukkan topik kontennya terlebih dahulu!")
+                    st.warning("Masukkan topik dulu!")
                 else:
-                    with st.spinner("Mengoptimasi SEO, meracik visual Veo, dan menyusun copywriting..."):
-                        try:
-                            # Logika Prompt Berbeda Tergantung Platform
-                            if "Video" in platform or "Shorts" in platform:
-                                prompt_kreator = f"""
-                                Kamu adalah Produser Konten Edukasi Hukum & Ekonomi, Ahli SEO YouTube, dan Ahli Prompting AI Video (Veo 3).
-                                Buatkan master naskah untuk {platform} dengan topik: "{ide_konten}". Target: Gen-Z/Milenial.
+                    # --- LOGIKA INSTAGRAM (AUTO GAMBAR) ---
+                    if "Instagram" in platform:
+                        with st.spinner("Meracik naskah & Menggambar slide..."):
+                            try:
+                                # Prompt JSON Strict
+                                prompt_ig = f"""
+                                Kamu adalah Social Media Manager. Buat konten Instagram 5 slide tentang: "{ide_konten}".
+                                Target: Gen-Z. Bahasa: Santai, Edukatif, Nendang.
                                 
-                                WAJIB gunakan format Markdown persis seperti ini:
-                                
-                                **Judul Video:** [Tulis judul yang clickbait tapi akurat]
-                                
-                                **Deskripsi:** [Tulis deskripsi SEO dengan keyword relevan]
-                                
-                                * **Hashtags:** `#contoh1` `#contoh2` `#contoh3`
-                                * **Tags:** `keyword 1, keyword 2, keyword 3`
-                                
-                                | No | Naskah Voiceover (Durasi est.) | Visual yang Dibayangkan | Prompt untuk Veo 3 |
-                                | :--- | :--- | :--- | :--- |
-                                | 1 | "Naskah bahasa Indonesia di sini." (0-5 detik) | Deskripsi visual dalam bahasa Indonesia. | `Cinematic prompt for Veo 3 in English, highly detailed, 4k` |
-                                | 2 | "Naskah baris kedua." (5-10 detik) | Deskripsi visual selanjutnya. | `Next english prompt for Veo 3, photorealistic` |
-                                
-                                Lanjutkan baris tabel hingga naskah selesai sesuai durasi platform. Pastikan isi kolom 'Prompt untuk Veo 3', Hashtags, dan Tags dibungkus dengan tanda backtick (`) agar formatnya menjadi kode.
+                                PENTING: Output HANYA boleh format JSON murni. Jangan ada teks lain.
+                                Struktur JSON:
+                                {{
+                                  "caption": "Caption instagram lengkap dengan hashtag...",
+                                  "slides": [
+                                    {{"headline": "Judul Slide 1 (Max 5 Kata)", "body": "Penjelasan ringkas slide 1..."}},
+                                    {{"headline": "Judul Slide 2", "body": "Penjelasan slide 2..."}},
+                                    {{"headline": "Judul Slide 3", "body": "Penjelasan slide 3..."}},
+                                    {{"headline": "Judul Slide 4", "body": "Penjelasan slide 4..."}},
+                                    {{"headline": "Judul Slide 5 (Kesimpulan)", "body": "Call to action..."}}
+                                  ]
+                                }}
                                 """
-                            else:
-                                prompt_kreator = f"""
-                                Kamu adalah Social Media Manager Edukasi Hukum & Ekonomi dan Copywriter handal.
-                                Buatkan konten {platform} dengan topik: "{ide_konten}". Target: Gen-Z/Milenial.
+                                response = model.generate_content(prompt_ig)
+                                # Bersihkan Markdown JSON
+                                json_str = response.text.replace("```json", "").replace("```", "").strip()
+                                data = json.loads(json_str)
                                 
-                                WAJIB gunakan format struktur persis seperti ini agar desain konsisten:
+                                # Tampilkan Caption
+                                st.subheader("1. Caption (Copy Paste)")
+                                st.code(data['caption'], language='text')
                                 
-                                📱 [KONTEN SLIDE-BY-SLIDE]
-                                Slide 1 (Hook Utama):
-                                - Headline Teks: [Judul besar yang bikin orang berhenti scrolling]
-                                - Deskripsi Visual: [Ide gambar/ilustrasi untuk background]
-                                
-                                Slide 2 (Masalah):
-                                - Teks: ...
-                                - Deskripsi Visual: ...
-                                (Lanjutkan hingga Slide 5/Terakhir - Kesimpulan & CTA)
-                                
-                                ✍️ [POSTINGAN INSTAGRAM]
-                                - Caption: [Tulis caption yang engaging, berikan spasi/enter yang rapi, ajak interaksi]
-                                - Hashtags: [Tulis hashtag strategis]
-                                """
-                                
-                            hasil_konten = model.generate_content(prompt_kreator).text
-                            st.markdown(hasil_konten)
-                            
-                        except Exception as e:
-                            st.error(f"Terjadi masalah pada server AI: {e}")
-        
-        # ISI TAB 2 (Database Leads)
+                                # Tampilkan Gambar
+                                st.subheader("2. Slide Gambar (Klik Kanan -> Save Image)")
+                                cols = st.columns(5)
+                                for i, slide in enumerate(data['slides']):
+                                    img = create_instagram_slide(slide['headline'], slide['body'], i+1)
+                                    with cols[i]:
+                                        st.image(img, caption=f"Slide {i+1}", use_column_width=True)
+
+                            except Exception as e:
+                                st.error(f"Gagal generate gambar. Coba lagi. Error: {e}")
+                    
+                    # --- LOGIKA VIDEO VEO (MARKDOWN TABLE) ---
+                    else:
+                        with st.spinner("Menulis naskah video..."):
+                            prompt_video = f"""
+                            Buatkan naskah video Shorts tentang: "{ide_konten}".
+                            Format Markdown Table:
+                            | No | Naskah Voiceover | Visual Prompt (English for Veo) |
+                            |---|---|---|
+                            | 1 | ... | `cinematic shot...` |
+                            """
+                            st.markdown(model.generate_content(prompt_video).text)
+
+        # TAB 2: DATABASE
         with tab2:
-            st.subheader("Data Pengguna Premium")
+            st.subheader("Data Leads")
             if os.path.exists('database_perkara.csv'):
                 df = pd.read_csv('database_perkara.csv')
-                st.dataframe(df, use_container_width=True)
-                
-                csv_data = df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📥 Unduh Database (CSV)",
-                    data=csv_data,
-                    file_name='Backup_Database_Leads.csv',
-                    mime='text/csv',
-                )
+                st.dataframe(df)
             else:
-                st.info("Belum ada data masuk dari pengguna.")
-                
+                st.info("Belum ada data.")
+
     elif password != "":
-        st.error("❌ Password salah! Anda tidak memiliki izin untuk mengakses halaman ini.")
-
-
-
+        st.error("Password Salah!")
