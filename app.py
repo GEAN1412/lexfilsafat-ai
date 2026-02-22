@@ -8,6 +8,7 @@ from datetime import datetime
 import json
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
+import yfinance as yf
 
 # ==========================================
 # 1. KONFIGURASI HALAMAN
@@ -15,11 +16,11 @@ import textwrap
 st.set_page_config(page_title="LexFilsafat AI - Super App", page_icon="⚖️", layout="wide")
 
 # KONFIGURASI DESAIN INSTAGRAM
-FONT_HEADLINE_PATH = "Roboto-Bold.ttf"  # Pastikan file ini ada di GitHub
-FONT_BODY_PATH = "Roboto-Regular.ttf"   # Pastikan file ini ada di GitHub
-BG_COLOR = "#1E1E1E"    # Latar Belakang Gelap (Dark Mode)
-TEXT_COLOR = "#FFFFFF"  # Teks Putih
-ACCENT_COLOR = "#FFD700" # Emas (Khas Hukum/Elegan)
+FONT_HEADLINE_PATH = "Roboto-Bold.ttf"
+FONT_BODY_PATH = "Roboto-Regular.ttf"
+BG_COLOR = "#1E1E1E"
+TEXT_COLOR = "#FFFFFF"
+ACCENT_COLOR = "#FFD700"
 
 # ==========================================
 # 2. SETUP API KEY (AMAN DARI LEAK)
@@ -34,9 +35,10 @@ if API_KEY == "":
     st.stop()
 
 genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 # ==========================================
-# FUNGSI BANTUAN (Word & Database)
+# FUNGSI BANTUAN (Word, Database, Gambar IG)
 # ==========================================
 def create_word_docx(teks_analisis, judul_perkara):
     doc = Document()
@@ -56,48 +58,28 @@ def simpan_ke_database(nama, email, kasus):
         data_final = data_baru
     data_final.to_csv(file_path, index=False)
 
-# ==========================================
-# FUNGSI BARU: GENERATOR GAMBAR (PILLOW)
-# ==========================================
 def create_instagram_slide(headline, body, slide_num):
-    # 1. Buat Kanvas 1080x1080
     img = Image.new('RGB', (1080, 1080), color=BG_COLOR)
     draw = ImageDraw.Draw(img)
-
-    # 2. Load Font (Dengan Fallback ke Default jika file ttf tidak ada)
     try:
-        font_h = ImageFont.truetype(FONT_HEADLINE_PATH, 80) # Ukuran Headline
-        font_b = ImageFont.truetype(FONT_BODY_PATH, 45)     # Ukuran Body
-        font_s = ImageFont.truetype(FONT_BODY_PATH, 30)     # Ukuran Footer
+        font_h = ImageFont.truetype(FONT_HEADLINE_PATH, 80)
+        font_b = ImageFont.truetype(FONT_BODY_PATH, 45)
+        font_s = ImageFont.truetype(FONT_BODY_PATH, 30)
     except:
-        # Jika user lupa upload font, pakai default (jelek tapi jalan)
         font_h = ImageFont.load_default()
         font_b = ImageFont.load_default()
         font_s = ImageFont.load_default()
 
-    # 3. Setup Margin & Text Wrapping
     margin = 80
-    max_width_h = 20 # Karakter per baris untuk Headline
-    max_width_b = 35 # Karakter per baris untuk Body
-
-    # 4. Gambar Headline (Warna Emas)
-    wrapped_h = textwrap.fill(headline, width=max_width_h)
+    wrapped_h = textwrap.fill(headline, width=20)
     draw.text((margin, 150), wrapped_h, font=font_h, fill=ACCENT_COLOR)
-
-    # Hitung tinggi headline agar body text tidak bertabrakan
     bbox = draw.textbbox((margin, 150), wrapped_h, font=font_h)
-    h_height = bbox[3] 
     
-    # 5. Gambar Body Text (Warna Putih) di bawah Headline
-    wrapped_b = textwrap.fill(body, width=max_width_b)
-    draw.text((margin, h_height + 60), wrapped_b, font=font_b, fill=TEXT_COLOR)
-
-    # 6. Gambar Footer & Elemen Grafis
-    # Garis aksen di bawah
+    wrapped_b = textwrap.fill(body, width=35)
+    draw.text((margin, bbox[3] + 60), wrapped_b, font=font_b, fill=TEXT_COLOR)
+    
     draw.rectangle([(margin, 980), (1080-margin, 990)], fill=ACCENT_COLOR)
-    # Watermark
     draw.text((margin, 1000), f"Slide {slide_num} • LexFilsafat AI", font=font_s, fill=TEXT_COLOR)
-
     return img
 
 # ==========================================
@@ -105,10 +87,8 @@ def create_instagram_slide(headline, body, slide_num):
 # ==========================================
 st.sidebar.title("⚖️ LexFilsafat Menu")
 menu = st.sidebar.radio("Pilih Layanan:", 
-    ["Analisis Umum", "Klinik Bisnis & Pajak", "Kalkulator Hukum", "Dashboard Admin 🔒"]
+    ["Analisis Umum", "Radar Investasi & Hukum", "Dashboard Admin 🔒"]
 )
-
-model = genai.GenerativeModel('gemini-2.5-flash')
 
 # ==========================================
 # MENU 1: ANALISIS UMUM
@@ -119,10 +99,8 @@ if menu == "Analisis Umum":
     
     st.info("💡 **Fitur Premium:** Masukkan nama dan email/WhatsApp Anda untuk mengunduh Draft Dokumen Hukum yang mendetail.")
     col1, col2 = st.columns(2)
-    with col1:
-        user_nama = st.text_input("Nama Anda (Opsional):")
-    with col2:
-        user_email = st.text_input("Email / WhatsApp (Opsional):")
+    with col1: user_nama = st.text_input("Nama Anda (Opsional):")
+    with col2: user_email = st.text_input("Email / WhatsApp (Opsional):")
 
     if st.button("Analisis Kasus"):
         if not user_input.strip():
@@ -145,18 +123,62 @@ if menu == "Analisis Umum":
                     st.error(f"Error AI: {e}")
 
 # ==========================================
-# MENU 2 & 3 (Placeholder)
+# MENU 2: RADAR INVESTASI & HUKUM (yfinance)
 # ==========================================
-elif menu == "Klinik Bisnis & Pajak":
-    st.title("🏢 Klinik Legal Bisnis & Pajak")
-    st.info("Fitur sedang dalam maintenance untuk upgrade sistem.")
-
-elif menu == "Kalkulator Hukum":
-    st.title("🧮 Kalkulator Pesangon")
-    st.info("Fitur sedang dalam maintenance untuk upgrade sistem.")
+elif menu == "Radar Investasi & Hukum":
+    st.title("📈 Radar Investasi & Risiko Hukum")
+    
+    tab_saham, tab_lainnya = st.tabs(["Saham (BEI)", "Reksadana, Obligasi & Crypto"])
+    
+    with tab_saham:
+        st.subheader("Analisis Emiten Bursa Efek Indonesia")
+        ticker_input = st.text_input("Masukkan Kode Emiten (4 Huruf):", placeholder="Contoh: BBCA, SIDO, atau GOTO")
+        
+        if st.button("Analisis Emiten 🚀"):
+            if not ticker_input:
+                st.warning("⚠️ Masukkan kode emiten terlebih dahulu!")
+            else:
+                with st.spinner("Menarik data pasar & meracik opini legal..."):
+                    try:
+                        ticker_symbol = f"{ticker_input.upper()}.JK"
+                        stock = yf.Ticker(ticker_symbol)
+                        hist = stock.history(period="5y")
+                        info = stock.info
+                        
+                        if hist.empty:
+                            st.error("Data emiten tidak ditemukan. Pastikan kode benar.")
+                        else:
+                            st.markdown(f"### Grafik Harga 5 Tahun ({ticker_input.upper()})")
+                            st.line_chart(hist['Close'], color="#FFD700")
+                            
+                            st.markdown("### Indikator Fundamental")
+                            col1, col2, col3, col4 = st.columns(4)
+                            col1.metric("Harga Saat Ini", f"Rp {hist['Close'].iloc[-1]:,.0f}")
+                            col2.metric("P/E Ratio (PER)", round(info.get('trailingPE', 0), 2) if info.get('trailingPE') else "N/A")
+                            col3.metric("P/B Ratio (PBV)", round(info.get('priceToBook', 0), 2) if info.get('priceToBook') else "N/A")
+                            col4.metric("Market Cap", f"Rp {info.get('marketCap', 0) / 1e12:,.2f} T" if info.get('marketCap') else "N/A")
+                            
+                            prompt_emiten = f"""
+                            Sebagai Corporate Lawyer, berikan ulasan emiten {ticker_input.upper()} di BEI.
+                            1. Profil Bisnis Singkat.
+                            2. Risiko Hukum Sektoral.
+                            3. Perlindungan Investor Ritel menurut UU Pasar Modal.
+                            """
+                            st.markdown(model.generate_content(prompt_emiten).text)
+                    except Exception as e:
+                        st.error(f"Error data pasar: {e}")
+                        
+    with tab_lainnya:
+        st.subheader("Analisis Instrumen Lainnya")
+        aset_input = st.text_area("Sebutkan instrumen yang ingin dianalisis:")
+        if st.button("Analisis Aset"):
+            if aset_input:
+                with st.spinner("Menganalisis regulasi..."):
+                    prompt_aset = f"Analisis hukum investasi ini di Indonesia: {aset_input}. Jelaskan regulasi Bappebti/OJK."
+                    st.markdown(model.generate_content(prompt_aset).text)
 
 # ==========================================
-# MENU 4: DASHBOARD ADMIN (PASSWORD PROTECTED)
+# MENU 3: DASHBOARD ADMIN (PASSWORD PROTECTED)
 # ==========================================
 elif menu == "Dashboard Admin 🔒":
     st.title("🔒 Area Khusus Admin")
@@ -168,10 +190,9 @@ elif menu == "Dashboard Admin 🔒":
         
         tab1, tab2 = st.tabs(["🎥 Generator Konten (Auto-Image)", "📊 Database Leads"])
         
-        # TAB 1: GENERATOR KONTEN
         with tab1:
             st.subheader("Dapur Konten Otomatis")
-            ide_konten = st.text_input("Topik Konten:", placeholder="Contoh: Utang Pinjol vs Utang Teman")
+            ide_konten = st.text_input("Topik Konten:", placeholder="Contoh: Pinjol Ilegal")
             platform = st.selectbox("Format:", [
                 "Instagram Feed (Auto-Generate Gambar)",
                 "YouTube Shorts / Veo (Naskah Video)"
@@ -181,49 +202,38 @@ elif menu == "Dashboard Admin 🔒":
                 if not ide_konten.strip():
                     st.warning("Masukkan topik dulu!")
                 else:
-                    # --- LOGIKA INSTAGRAM (AUTO GAMBAR) ---
                     if "Instagram" in platform:
                         with st.spinner("Meracik naskah & Menggambar slide..."):
                             try:
-                                # Prompt JSON Strict
                                 prompt_ig = f"""
                                 Kamu adalah Social Media Manager. Buat konten Instagram 5 slide tentang: "{ide_konten}".
-                                Target: Gen-Z. Bahasa: Santai, Edukatif, Nendang.
-                                
-                                PENTING: Output HANYA boleh format JSON murni. Jangan ada teks lain.
-                                Struktur JSON:
+                                PENTING: Output HANYA format JSON murni.
                                 {{
-                                  "caption": "Caption instagram lengkap dengan hashtag...",
+                                  "caption": "Caption lengkap...",
                                   "slides": [
-                                    {{"headline": "Judul Slide 1 (Max 5 Kata)", "body": "Penjelasan ringkas slide 1..."}},
-                                    {{"headline": "Judul Slide 2", "body": "Penjelasan slide 2..."}},
-                                    {{"headline": "Judul Slide 3", "body": "Penjelasan slide 3..."}},
-                                    {{"headline": "Judul Slide 4", "body": "Penjelasan slide 4..."}},
-                                    {{"headline": "Judul Slide 5 (Kesimpulan)", "body": "Call to action..."}}
+                                    {{"headline": "Judul 1", "body": "Isi..."}},
+                                    {{"headline": "Judul 2", "body": "Isi..."}},
+                                    {{"headline": "Judul 3", "body": "Isi..."}},
+                                    {{"headline": "Judul 4", "body": "Isi..."}},
+                                    {{"headline": "Judul 5", "body": "Isi..."}}
                                   ]
                                 }}
                                 """
                                 response = model.generate_content(prompt_ig)
-                                # Bersihkan Markdown JSON
                                 json_str = response.text.replace("```json", "").replace("```", "").strip()
                                 data = json.loads(json_str)
                                 
-                                # Tampilkan Caption
-                                st.subheader("1. Caption (Copy Paste)")
+                                st.subheader("1. Caption")
                                 st.code(data['caption'], language='text')
                                 
-                                # Tampilkan Gambar
-                                st.subheader("2. Slide Gambar (Klik Kanan -> Save Image)")
+                                st.subheader("2. Slide Gambar")
                                 cols = st.columns(5)
                                 for i, slide in enumerate(data['slides']):
                                     img = create_instagram_slide(slide['headline'], slide['body'], i+1)
                                     with cols[i]:
                                         st.image(img, caption=f"Slide {i+1}", use_column_width=True)
-
                             except Exception as e:
-                                st.error(f"Gagal generate gambar. Coba lagi. Error: {e}")
-                    
-                    # --- LOGIKA VIDEO VEO (MARKDOWN TABLE) ---
+                                st.error(f"Gagal generate gambar: {e}")
                     else:
                         with st.spinner("Menulis naskah video..."):
                             prompt_video = f"""
@@ -235,7 +245,6 @@ elif menu == "Dashboard Admin 🔒":
                             """
                             st.markdown(model.generate_content(prompt_video).text)
 
-        # TAB 2: DATABASE
         with tab2:
             st.subheader("Data Leads")
             if os.path.exists('database_perkara.csv'):
@@ -246,3 +255,11 @@ elif menu == "Dashboard Admin 🔒":
 
     elif password != "":
         st.error("Password Salah!")
+
+# ==========================================
+# FOOTER / CREDIT EKSKLUSIF
+# ==========================================
+st.sidebar.markdown("---")
+st.sidebar.caption("Dibuat oleh Gean Pratama Adiaksa SH")
+st.markdown("---")
+st.caption("© 2026 | Dibuat oleh Gean Pratama Adiaksa SH - Analisis Hukum & Ekonomi")
