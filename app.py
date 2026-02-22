@@ -87,15 +87,15 @@ def create_instagram_slide(headline, body, slide_num):
 # ==========================================
 st.sidebar.title("⚖️ LexFilsafat Menu")
 menu = st.sidebar.radio("Pilih Layanan:", 
-    ["Analisis Umum", "Radar Investasi & Hukum", "Dashboard Admin 🔒"]
+    ["Analisis Hukum Umum", "Radar Investasi & Hukum", "Dashboard Admin 🔒"]
 )
 
 # ==========================================
 # MENU 1: ANALISIS UMUM
 # ==========================================
 if menu == "Analisis Umum":
-    st.title("⚖️ Analisis Perkara Umum")
-    user_input = st.text_area("Deskripsikan kronologi perkara:", height=150)
+    st.title("⚖️ Analisis Perkara Hukum Umum")
+    user_input = st.text_area("Deskripsikan kronologi perkara atau istilah hukum:", height=150)
     
     st.info("💡 **Fitur Premium:** Masukkan nama dan email/WhatsApp Anda untuk mengunduh Draft Dokumen Hukum yang mendetail.")
     col1, col2 = st.columns(2)
@@ -263,3 +263,4 @@ st.sidebar.markdown("---")
 st.sidebar.caption("Dibuat oleh Gean Pratama Adiaksa SH")
 st.markdown("---")
 st.caption("© 2026 | Dibuat oleh Gean Pratama Adiaksa SH - Analisis Hukum & Ekonomi")
+
