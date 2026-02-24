@@ -18,9 +18,11 @@ st.set_page_config(page_title="LexFilsafat AI - Super App", page_icon="⚖️", 
 # KONFIGURASI DESAIN INSTAGRAM
 FONT_HEADLINE_PATH = "Roboto-Bold.ttf"
 FONT_BODY_PATH = "Roboto-Regular.ttf"
-BG_COLOR = "#1E1E1E"
-TEXT_COLOR = "#FFFFFF"
-ACCENT_COLOR = "#FFD700"
+BG_COLOR = "#000000"     # Latar Belakang Luar (Hitam Pekat)
+CARD_COLOR = "#121212"   # Latar Belakang Kartu (Abu-abu Sangat Gelap)
+TEXT_COLOR = "#FFFFFF"   # Teks Putih
+ACCENT_COLOR = "#FFD700" # Emas (Khas Hukum/Elegan)
+VERIFIED_COLOR = "#1DA1F2" # Biru Centang Verified
 
 # ==========================================
 # 2. SETUP API KEY (AMAN DARI LEAK)
@@ -38,7 +40,7 @@ genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
 # ==========================================
-# FUNGSI BANTUAN (Word, Database, Gambar IG)
+# FUNGSI BANTUAN (Word & Database)
 # ==========================================
 def create_word_docx(teks_analisis, judul_perkara):
     doc = Document()
@@ -58,28 +60,83 @@ def simpan_ke_database(nama, email, kasus):
         data_final = data_baru
     data_final.to_csv(file_path, index=False)
 
+# ==========================================
+# FUNGSI DI-UPGRADE: GENERATOR GAMBAR UI MODERN
+# ==========================================
 def create_instagram_slide(headline, body, slide_num):
+    # 1. Buat Kanvas Utama (Hitam Pekat)
     img = Image.new('RGB', (1080, 1080), color=BG_COLOR)
     draw = ImageDraw.Draw(img)
-    try:
-        font_h = ImageFont.truetype(FONT_HEADLINE_PATH, 80)
-        font_b = ImageFont.truetype(FONT_BODY_PATH, 45)
-        font_s = ImageFont.truetype(FONT_BODY_PATH, 30)
-    except:
-        font_h = ImageFont.load_default()
-        font_b = ImageFont.load_default()
-        font_s = ImageFont.load_default()
 
-    margin = 80
-    wrapped_h = textwrap.fill(headline, width=20)
-    draw.text((margin, 150), wrapped_h, font=font_h, fill=ACCENT_COLOR)
-    bbox = draw.textbbox((margin, 150), wrapped_h, font=font_h)
+    # 2. Load Berbagai Ukuran Font
+    try:
+        font_h = ImageFont.truetype(FONT_HEADLINE_PATH, 65)      # Headline utama
+        font_b = ImageFont.truetype(FONT_BODY_PATH, 40)          # Body text
+        font_name = ImageFont.truetype(FONT_HEADLINE_PATH, 35)   # Nama Profil
+        font_handle = ImageFont.truetype(FONT_BODY_PATH, 25)     # Username @
+        font_s = ImageFont.truetype(FONT_BODY_PATH, 28)          # Footer
+    except:
+        font_h = font_b = font_name = font_handle = font_s = ImageFont.load_default()
+
+    # 3. Gambar Rounded Card (Kartu UI Modern)
+    card_margin = 40
+    try:
+        # Fitur rounded_rectangle berjalan di Pillow versi modern
+        draw.rounded_rectangle([(card_margin, card_margin), (1080-card_margin, 1080-card_margin)], 
+                               radius=50, fill=CARD_COLOR, outline="#333333", width=2)
+    except AttributeError:
+        # Fallback aman jika Pillow di Streamlit versi lama
+        draw.rectangle([(card_margin, card_margin), (1080-card_margin, 1080-card_margin)], 
+                       fill=CARD_COLOR, outline="#333333", width=2)
+
+    # 4. Header Profil (Gean Pratama Adiaksa SH)
+    prof_x, prof_y = 100, 100
+    prof_size = 80
+    # Lingkaran Foto Profil (Aksen Emas)
+    draw.ellipse([(prof_x, prof_y), (prof_x+prof_size, prof_y+prof_size)], fill=ACCENT_COLOR)
     
-    wrapped_b = textwrap.fill(body, width=35)
-    draw.text((margin, bbox[3] + 60), wrapped_b, font=font_b, fill=TEXT_COLOR)
+    text_x = prof_x + prof_size + 30
+    nama_kreator = "Gean Pratama Adiaksa SH"
+    draw.text((text_x, prof_y + 10), nama_kreator, font=font_name, fill=TEXT_COLOR)
     
-    draw.rectangle([(margin, 980), (1080-margin, 990)], fill=ACCENT_COLOR)
-    draw.text((margin, 1000), f"Slide {slide_num} • LexFilsafat AI", font=font_s, fill=TEXT_COLOR)
+    # Centang Biru (Verified Badge)
+    try:
+        bbox_name = draw.textbbox((text_x, prof_y + 10), nama_kreator, font=font_name)
+        badge_x = bbox_name[2] + 15
+        draw.ellipse([(badge_x, prof_y + 15), (badge_x+30, prof_y+45)], fill=VERIFIED_COLOR)
+        draw.text((badge_x + 8, prof_y + 15), "✓", font=font_handle, fill="#FFFFFF")
+    except:
+        pass # Aman jika terjadi error pengukuran teks
+
+    # Username
+    draw.text((text_x, prof_y + 50), "@LexFilsafat", font=font_handle, fill="#888888")
+
+    # 5. Konten Utama (Tengah Kartu)
+    margin_content = 100
+    current_y = 260
+    
+    # Headline (Emas, dibungkus agar tidak nabrak)
+    wrapped_h = textwrap.fill(headline, width=24)
+    draw.text((margin_content, current_y), wrapped_h, font=font_h, fill=ACCENT_COLOR)
+    
+    # Menghitung jarak dinamis untuk Body Text
+    try:
+        bbox_h = draw.textbbox((margin_content, current_y), wrapped_h, font=font_h)
+        current_y = bbox_h[3] + 50
+    except:
+        current_y += 180 
+
+    # Body (Putih)
+    wrapped_b = textwrap.fill(body, width=38)
+    draw.text((margin_content, current_y), wrapped_b, font=font_b, fill=TEXT_COLOR)
+
+    # 6. Progress Bar & Footer
+    # Garis Pembatas
+    draw.line([(card_margin + 50, 940), (1080 - card_margin - 50, 940)], fill="#333333", width=2)
+    # Teks Footer
+    draw.text((100, 970), f"Slide {slide_num} dari 5", font=font_s, fill="#888888")
+    draw.text((1080 - 350, 970), "Swipe untuk lanjut 👉", font=font_s, fill="#888888")
+
     return img
 
 # ==========================================
@@ -203,7 +260,7 @@ elif menu == "Dashboard Admin 🔒":
                     st.warning("Masukkan topik dulu!")
                 else:
                     if "Instagram" in platform:
-                        with st.spinner("Meracik naskah & Menggambar slide..."):
+                        with st.spinner("Meracik naskah & Menggambar slide UI Modern..."):
                             try:
                                 prompt_ig = f"""
                                 Kamu adalah Social Media Manager. Buat konten Instagram 5 slide tentang: "{ide_konten}".
@@ -226,7 +283,7 @@ elif menu == "Dashboard Admin 🔒":
                                 st.subheader("1. Caption")
                                 st.code(data['caption'], language='text')
                                 
-                                st.subheader("2. Slide Gambar")
+                                st.subheader("2. Slide Gambar UI Modern (Klik Kanan -> Save Image)")
                                 cols = st.columns(5)
                                 for i, slide in enumerate(data['slides']):
                                     img = create_instagram_slide(slide['headline'], slide['body'], i+1)
